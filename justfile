@@ -1,7 +1,7 @@
 
 run: build
   ./target/bootstrap/yfreight build
-  ./target/bootstrap/yfreight help
+  ./target/ydebug/yfreight help
 
 build_lib:
     rustc src/lib.rs --edition 2021 --crate-type=lib --crate-name=yfreight \
@@ -19,3 +19,6 @@ build:
   # Create the executable
   just build_bin
 
+test: build
+  mkdir -p target/test
+  ./target/ydebug/yfreight test

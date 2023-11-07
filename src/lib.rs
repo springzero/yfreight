@@ -196,7 +196,7 @@ impl RustcBuilder {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Edition {
     E2015,
     E2018,
@@ -226,6 +226,7 @@ impl FromStr for Edition {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CrateType {
     Bin,
     Lib,
