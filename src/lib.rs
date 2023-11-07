@@ -28,7 +28,7 @@ pub fn build() -> Result<()> {
     let lib_rs = root_dir.join("src").join("lib.rs");
     let main_rs = root_dir.join("src").join("main.rs");
     let target = root_dir.join("target");
-    let target_debug = target.join("debug");
+    let target_debug = target.join("ydebug");
     fs::create_dir_all(&target_debug)?;
 
     let lib_compile = || -> Result<()> {
