@@ -1,3 +1,8 @@
+mod config;
+mod logger;
+
+use config::Mainfest;
+use logger::Logger;
 use std::env;
 use std::error::Error;
 use std::fmt;
@@ -5,13 +10,15 @@ use std::fmt::Display;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use std::str::FromStr;
 
-pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
+pub type Result<T> = std::result::Result<T, BoxError>;
+pub type BoxError = Box<dyn Error>;
 
 fn root_dir() -> Result<PathBuf> {
     let current_dir = env::current_dir()?;
     for ancestor in current_dir.ancestors() {
-        if ancestor.join(".git").exists() {
+        if ancestor.join("Yfreight.toml").exists() {
             return Ok(ancestor.into());
         }
     }
@@ -20,10 +27,12 @@ fn root_dir() -> Result<PathBuf> {
 }
 
 pub fn build() -> Result<()> {
+    let mut logger = Logger::new();
     let root_dir = root_dir()?;
-    let crate_name = root_dir
-        .file_name()
-        .ok_or::<Box<dyn Error>>("yfreight run in directory without a name".into())?;
+    // let crate_name = root_dir
+    //     .file_name()
+    //     .ok_or::<Box<dyn Error>>("yfreight run in directory without a name".into())?;
+    let manifest = Mainfest::parse_from_file(root_dir.join("Yfreight.toml"))?;
 
     let lib_rs = root_dir.join("src").join("lib.rs");
     let main_rs = root_dir.join("src").join("main.rs");
@@ -31,26 +40,26 @@ pub fn build() -> Result<()> {
     let target_debug = target.join("ydebug");
     fs::create_dir_all(&target_debug)?;
 
-    let lib_compile = || -> Result<()> {
-        println!("Compiling lib.rs");
+    let lib_compile = |logger: &mut Logger| -> Result<()> {
+        logger.compiling_crate(&manifest.crate_name);
         Rustc::builder()
-            .edition(Edition::E2021)
+            .edition(manifest.edition)
             .crate_type(CrateType::Lib)
-            .crate_name(crate_name.to_str().unwrap())
+            .crate_name(&manifest.crate_name)
             .out_dir(target_debug.clone())
             .lib_dir(target_debug.clone())
             .done()
             .run(lib_rs.to_str().unwrap())?;
-        println!("Compiling lib.rs -- Done");
+        logger.done_compiling();
         Ok(())
     };
 
-    let bin_compile = |externs: Vec<&str>| -> Result<()> {
-        println!("Compiling main.rs");
+    let bin_compile = |logger: &mut Logger, externs: Vec<&str>| -> Result<()> {
+        logger.compiling_bin(&manifest.crate_name);
         let mut builder = Rustc::builder()
-            .edition(Edition::E2021)
+            .edition(manifest.edition)
             .crate_type(CrateType::Bin)
-            .crate_name(crate_name.to_str().unwrap())
+            .crate_name(&manifest.crate_name)
             .out_dir(target_debug.clone())
             .lib_dir(target_debug.clone());
 
@@ -59,21 +68,20 @@ pub fn build() -> Result<()> {
         }
 
         builder.done().run(main_rs.to_str().unwrap())?;
-        println!("Compiling main.rs -- Done");
-
+        logger.done_compiling();
         Ok(())
     };
 
     match (lib_rs.exists(), main_rs.exists()) {
         (true, true) => {
-            lib_compile()?;
-            bin_compile(vec![crate_name.to_str().unwrap()])?;
+            lib_compile(&mut logger)?;
+            bin_compile(&mut logger, vec![&manifest.crate_name])?;
         }
         (true, false) => {
-            lib_compile()?;
+            lib_compile(&mut logger)?;
         }
         (false, true) => {
-            bin_compile(vec![])?;
+            bin_compile(&mut logger, vec![])?;
         }
         (false, false) => {
             return Err("There is nothing to compile".into());
@@ -188,6 +196,7 @@ impl RustcBuilder {
     }
 }
 
+#[derive(Copy, Clone)]
 pub enum Edition {
     E2015,
     E2018,
@@ -202,6 +211,18 @@ impl Display for Edition {
             Self::E2021 => "2021",
         };
         write!(f, "{edition}")
+    }
+}
+
+impl FromStr for Edition {
+    type Err = BoxError;
+    fn from_str(input: &str) -> Result<Self> {
+        match input {
+            "2015" => Ok(Self::E2015),
+            "2018" => Ok(Self::E2018),
+            "2021" => Ok(Self::E2021),
+            edition => Err(format!("Edition {edition} is not supported").into()),
+        }
     }
 }
 
