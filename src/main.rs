@@ -7,8 +7,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     {
         const HELP: &str = "\
         Alternative for Cargo\n\n\
-        Usage: freight [COMMAND] [OPTIONS]\n\n\
+        Usage: yfreight [COMMAND] [OPTIONS]\n\n\
         Commands:\n    \
+            build   Build a Yfreight or Cargo project \n \
+            test    Test a Yfreight or cargo project \n \
             help    Print out this message
         ";
 
@@ -16,10 +18,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut args = env::args().skip(1);
         match args.next().as_ref().map(String::as_str) {
             Some("build") => yfreight::build()?,
-            // Some("test") => {
-            //     yfreight::build_tests()?;
-            //     yfreight::run_tests()?;
-            // }
+            Some("test") => {
+                yfreight::build_tests()?;
+                yfreight::run_tests()?;
+            }
             Some("help") => println!("{HELP}"),
             _ => {
                 println!("Unsupported command");

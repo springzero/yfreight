@@ -1,7 +1,7 @@
 
 run: build
   ./target/bootstrap/yfreight build
-  ./target/ydebug/yfreight help
+  ./target/bootstrap/yfreight help
 
 build_lib:
     rustc src/lib.rs --edition 2021 --crate-type=lib --crate-name=yfreight \
@@ -21,4 +21,4 @@ build:
 
 test: build
   mkdir -p target/test
-  ./target/ydebug/yfreight test
+  ./target/bootstrap/yfreight test
